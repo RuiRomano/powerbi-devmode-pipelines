@@ -1,0 +1,54 @@
+variables:
+  - name: 'pipelineName'
+    value: 'RR - Sales Analytics (AnalytiCats)'
+
+trigger:
+  branches:
+    include:
+    - main   
+  paths:
+    include:
+    - '*.Dataset/*'
+    - '*.Report/*'
+    # exclude:
+    # - '*.yml'
+
+pool:
+  vmimage: 'windows-latest'
+
+stages:
+ - stage: Test  
+   jobs:
+      - deployment: Deploy
+        displayName: "Deploy Power BI Pipeline"
+        environment: "Test"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: ms-pbi-api.pbi-automation-tools.Pipelines_Deploy.DeploymentPipelines-Deploy@1
+                  inputs:
+                    pbiConnection: SP_RR_DevMode_Deploy
+                    pipeline: $(pipelineName)
+                    stageOrder: Test
+                    note: "$(Build.SourceVersion)"
+                    deployType: All
+                    createNewWS: false
+
+ - stage: Production  
+   jobs:
+      - deployment: Deploy
+        displayName: "Deploy Power BI Pipeline"
+        environment: "Production"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: ms-pbi-api.pbi-automation-tools.Pipelines_Deploy.DeploymentPipelines-Deploy@1
+                  inputs:
+                    pbiConnection: SP_RR_DevMode_Deploy
+                    pipeline: $(pipelineName)
+                    stageOrder: Production
+                    note: "$(Build.SourceVersion)"
+                    deployType: All
+                    createNewWS: false

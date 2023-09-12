@@ -1,0 +1,41 @@
+variables:
+  - name: 'pipelineName'
+    value: 'RR - Sales Analytics (AnalytiCats)'
+
+trigger: none
+
+pool:
+  vmimage: 'windows-latest'
+
+stages:
+ - stage: Build_DataSets
+   jobs:
+    - job: Build
+      steps:
+        - checkout: self
+          path: 'self'
+        - task: PowerShell@2
+          displayName: 'Download TE'
+          inputs:
+            targetType: inline
+            script: |
+              $path = Resolve-Path "."
+              $toolsPath = "$path\_Tools"
+              $TabularEditorUrl = "https://github.com/otykier/TabularEditor/releases/download/2.18.2/TabularEditor.Portable.zip" 
+              $zipFile = "$path\TabularEditor.zip"
+              Invoke-WebRequest -Uri $TabularEditorUrl -OutFile $zipFile
+              Expand-Archive -Path $zipFile -DestinationPath $toolsPath -Force
+              Remove-Item $zipFile
+              Write-Host "Tools path: $toolsPath"          
+
+        - task: PowerShell@2
+          displayName: 'Run BPA Rules'
+          inputs:
+            targetType: inline
+            script: |
+              $path = Resolve-Path "."
+              $tabularEditorPath = "$path\_Tools\TabularEditor.exe"
+              $bpaRulesPath = "$(Build.SourcesDirectory)\BPARules.json"
+              $modelFilePath = "$(Build.SourcesDirectory)\Sales.Dataset\Model.bim"
+
+              Start-Process -FilePath "$tabularEditorPath" -ArgumentList """$modelFilePath"" -A ""$bpaRulesPath"" -V" -NoNewWindow -Wait
