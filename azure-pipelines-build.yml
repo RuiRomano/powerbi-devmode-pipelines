@@ -1,10 +1,3 @@
-variables:
-  - name: 'datasetPath'
-    value: 'Sales.Dataset\Model.bim'
-  - name: 'reportPath'
-    value: 'Sales.Report'
-
-
 trigger: none
 
 pool:
@@ -42,6 +35,7 @@ stages:
               Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
               Expand-Archive -Path $zipFile -DestinationPath $toolsPath -Force
               Remove-Item $zipFile
+              Remove-Item $path\_Tools\win-x64\CLI\Files -Force -Recurse
               Write-Host "Tools path: $toolsPath"
 
         - task: PowerShell@2
@@ -52,18 +46,34 @@ stages:
               $path = "$(Build.SourcesDirectory)"
               $toolPath = "$path\_Tools\TabularEditor.exe"
               $rulesPath = "$path\Rules-Dataset.json"
-              $datasetPath = "$path\$(datasetPath)"
 
-              Start-Process -FilePath "$toolPath" -ArgumentList """$datasetPath"" -A ""$rulesPath"" -V" -NoNewWindow -Wait
+              $itemsFolders = Get-ChildItem  -Path $path -recurse -include *.pbidataset
+
+              foreach($itemFolder in $itemsFolders)
+              {	
+                  $itemPath = "$($itemFolder.Directory.FullName)\Model.bim"
+
+                  Write-Host "Processing '$itemPath'"
+
+                  Start-Process -FilePath "$toolPath" -ArgumentList """$itemPath"" -A ""$rulesPath"" -V" -NoNewWindow -Wait
+              }
 
         - task: PowerShell@2
           displayName: 'Run Report Rules'
           inputs:
             targetType: inline
             script: |
-              $path = "$(Build.SourcesDirectory)"
-              $toolPath = "$path\_Tools\win-x64\CLI\PBIXInspectorCLI.exe"
-              $rulesPath = "$path\Rules-Report.json"
-              $reportPath = "$path\$(reportPath)"
+                  $path = Resolve-Path "."
+                  $toolPath =  "$path\_Tools\win-x64\CLI\PBIXInspectorCLI.exe"
+                  $rulesPath = "$path\Rules-Report.json"
 
-              Start-Process -FilePath "$toolPath" -ArgumentList "-pbipreport ""$reportPath"" -rules ""$rulesPath"" -formats ""ADO""" -NoNewWindow -Wait
+                  $itemsFolders = Get-ChildItem  -Path $path -recurse -include *.pbir
+
+                  foreach($itemFolder in $itemsFolders)
+                  {	
+                      $itemPath = $itemFolder.Directory.FullName
+                      
+                      Write-Host "Processing '$itemPath'"
+
+                      Start-Process -FilePath "$toolPath" -ArgumentList "-pbipreport ""$itemPath"" -rules ""$rulesPath"" -formats ""ADO""" -NoNewWindow -Wait
+                  }
