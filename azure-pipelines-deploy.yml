@@ -20,13 +20,14 @@ stages:
  - stage: Test  
    jobs:
       - deployment: Deploy
-        displayName: "Deploy Power BI Pipeline"
+        displayName: "Deploy to Test"
         environment: "Test"
         strategy:
           runOnce:
             deploy:
               steps:
                 - task: ms-pbi-api.pbi-automation-tools.Pipelines_Deploy.DeploymentPipelines-Deploy@1
+                  displayName: 'Run Deployment Pipeline'
                   inputs:
                     pbiConnection: SP_RR_DevMode_Deploy
                     pipeline: $(pipelineName)
@@ -34,17 +35,25 @@ stages:
                     note: "$(Build.SourceVersion)"
                     deployType: All
                     createNewWS: false
+                - task: maikvandergaag.maikvandergaag-power-bi-actions.PowerBIActions.PowerBIActions@5
+                  displayName: 'Refresh Dataset'
+                  inputs:
+                    PowerBIServiceEndpoint: 'PowerBIActions_SP'
+                    Action: DataRefresh
+                    WorkspaceName: 'RR - Sales Analytics {TEST}'
+                    DatasetName: Sales
 
  - stage: Production  
    jobs:
       - deployment: Deploy
-        displayName: "Deploy Power BI Pipeline"
+        displayName: "Deploy to Production"
         environment: "Production"
         strategy:
           runOnce:
             deploy:
               steps:
                 - task: ms-pbi-api.pbi-automation-tools.Pipelines_Deploy.DeploymentPipelines-Deploy@1
+                  displayName: 'Run Deployment Pipeline'
                   inputs:
                     pbiConnection: SP_RR_DevMode_Deploy
                     pipeline: $(pipelineName)
@@ -52,3 +61,11 @@ stages:
                     note: "$(Build.SourceVersion)"
                     deployType: All
                     createNewWS: false
+                    updateApp: true
+                - task: maikvandergaag.maikvandergaag-power-bi-actions.PowerBIActions.PowerBIActions@5
+                  displayName: 'Refresh Dataset'
+                  inputs:
+                    PowerBIServiceEndpoint: 'PowerBIActions_SP'
+                    Action: DataRefresh
+                    WorkspaceName: 'RR - Sales Analytics {PRD}'
+                    DatasetName: Sales

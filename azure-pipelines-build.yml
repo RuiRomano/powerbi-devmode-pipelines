@@ -4,9 +4,9 @@ pool:
   vmimage: 'windows-latest'
 
 stages:
- - stage: Build_DataSets
+ - stage: Build
    jobs:
-    - job: Build
+    - job: Build_Datasets
       steps:
         - checkout: self
           path: 'self'
@@ -23,21 +23,6 @@ stages:
               Expand-Archive -Path $zipFile -DestinationPath $toolsPath -Force
               Remove-Item $zipFile
               Write-Host "Tools path: $toolsPath"          
-        - task: PowerShell@2
-          displayName: 'Download PBIXInspector'
-          inputs:
-            targetType: inline
-            script: |
-              $path = "$(Build.SourcesDirectory)"
-              $toolsPath = "$path\_Tools"
-              $downloadUrl = "https://github.com/NatVanG/PBIXInspector/releases/download/v1.7.1-CLI/win-x64-v1.7.1-CLI.zip" 
-              $zipFile = "$path\PBIXInspector.zip"
-              Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
-              Expand-Archive -Path $zipFile -DestinationPath $toolsPath -Force
-              Remove-Item $zipFile
-              Remove-Item $path\_Tools\win-x64\CLI\Files -Force -Recurse
-              Write-Host "Tools path: $toolsPath"
-
         - task: PowerShell@2
           displayName: 'Run Dataset Rules'
           inputs:
@@ -58,6 +43,24 @@ stages:
                   Start-Process -FilePath "$toolPath" -ArgumentList """$itemPath"" -A ""$rulesPath"" -V" -NoNewWindow -Wait
               }
 
+    - job: Build_Reports
+      steps:
+        - checkout: self
+          path: 'self'
+        - task: PowerShell@2
+          displayName: 'Download PBIXInspector'
+          inputs:
+            targetType: inline
+            script: |
+              $path = "$(Build.SourcesDirectory)"
+              $toolsPath = "$path\_Tools"
+              $downloadUrl = "https://github.com/NatVanG/PBIXInspector/releases/download/v1.8.1-CLI/win-x64-v1.8.1-CLI.zip" 
+              $zipFile = "$path\PBIXInspector.zip"
+              Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
+              Expand-Archive -Path $zipFile -DestinationPath $toolsPath -Force
+              Remove-Item $zipFile
+              Remove-Item $path\_Tools\win-x64\CLI\Files -Force -Recurse
+              Write-Host "Tools path: $toolsPath"
         - task: PowerShell@2
           displayName: 'Run Report Rules'
           inputs:
