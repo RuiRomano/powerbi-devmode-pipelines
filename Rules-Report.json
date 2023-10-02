@@ -8,8 +8,8 @@
       "codepage": 1200,
       "rules": [
         {
-          "name": "Charts using theme colours for certain visuals",
-          "description": "Check that charts avoid custom colours and use theme colours instead.",
+          "name": "Visuals must use theme colors and not static colors.",
+          "description": "Visuals must use theme colors and not static colors.",
           "disabled": false,
           "logType": "error",
           "forEachPath": "$.sections[*]",
