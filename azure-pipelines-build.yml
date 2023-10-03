@@ -6,69 +6,45 @@ pool:
 stages:
  - stage: Build
    jobs:
-    - job: Build_Reports
-      steps:
-        - checkout: self
-          path: 'self'
-        - task: PowerShell@2
-          displayName: 'Download PBIXInspector'
-          inputs:
-            targetType: inline
-            script: |
-              $path = "$(Build.SourcesDirectory)"
-              $toolsPath = "$path\_Tools"
-              $downloadUrl = "https://github.com/NatVanG/PBI-Inspector/releases/download/v1.8.1-CLI/win-x64-v1.8.1-CLI.zip" 
-              $zipFile = "$path\PBIXInspector.zip"
-              Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
-              Expand-Archive -Path $zipFile -DestinationPath $toolsPath -Force
-              Remove-Item $zipFile
-              Remove-Item $path\_Tools\win-x64\CLI\Files -Force -Recurse
-              Write-Host "Tools path: $toolsPath"
-        - task: PowerShell@2
-          displayName: 'Run Report Rules'
-          inputs:
-            targetType: inline
-            script: |
-                  $path = Resolve-Path "."
-                  $toolPath =  "$path\_Tools\win-x64\CLI\PBIXInspectorCLI.exe"
-                  $rulesPath = "$path\Rules-Report.json"
-
-                  $itemsFolders = Get-ChildItem  -Path $path -recurse -include *.pbir
-
-                  foreach($itemFolder in $itemsFolders)
-                  {	
-                      $itemPath = $itemFolder.Directory.FullName
-                      
-                      Write-Host "Processing '$itemPath'"
-
-                      Start-Process -FilePath "$toolPath" -ArgumentList "-pbipreport ""$itemPath"" -rules ""$rulesPath"" -formats ""ADO""" -NoNewWindow -Wait
-                  }
 
     - job: Build_Datasets
       steps:
         - checkout: self
           path: 'self'
         - task: PowerShell@2
-          displayName: 'Download TE'
+          displayName: 'Download Tabular Editor and Default Rules'
           inputs:
             targetType: inline
-            script: |
-              $path = "$(Build.SourcesDirectory)"
-              $toolsPath = "$path\_Tools"
-              $TabularEditorUrl = "https://github.com/otykier/TabularEditor/releases/download/2.18.2/TabularEditor.Portable.zip" 
-              $zipFile = "$path\TabularEditor.zip"
-              Invoke-WebRequest -Uri $TabularEditorUrl -OutFile $zipFile
-              Expand-Archive -Path $zipFile -DestinationPath $toolsPath -Force
-              Remove-Item $zipFile
-              Write-Host "Tools path: $toolsPath"          
+            script: |     
+              $path = "$(Build.SourcesDirectory)"                       
+              $tempPath = "$path\_temp"
+              $toolPath = "$path\_tools\TE"
+              New-Item -ItemType Directory -Path $tempPath -ErrorAction SilentlyContinue | Out-Null              
+              
+              Write-Host "Downloading Tabular Editor binaries"
+              $downloadUrl = "https://github.com/otykier/TabularEditor/releases/download/2.18.2/TabularEditor.Portable.zip"
+              $zipFile = "$tempPath\TabularEditor.zip"
+              Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
+              Expand-Archive -Path $zipFile -DestinationPath $toolPath -Force            
+
+              Write-Host "Downloading Dataset default rules"
+              $downloadUrl = "https://raw.githubusercontent.com/microsoft/Analysis-Services/master/BestPracticeRules/BPARules.json"
+              Invoke-WebRequest -Uri $downloadUrl -OutFile "$tempPath\Rules-Dataset.json"     
         - task: PowerShell@2
           displayName: 'Run Dataset Rules'
           inputs:
             targetType: inline
             script: |
               $path = "$(Build.SourcesDirectory)"
-              $toolPath = "$path\_Tools\TabularEditor.exe"
+              $tempPath = "$path\_temp"
+              $toolPath = "$path\_Tools\TE\TabularEditor.exe"
               $rulesPath = "$path\Rules-Dataset.json"
+
+              if (!(Test-Path $rulesPath))
+              {
+                  Write-Host "Running default downloaded rules"
+                  $rulesPath = "$tempPath\Rules-Dataset.json"
+              }
 
               $itemsFolders = Get-ChildItem  -Path $path -recurse -include *.pbidataset
 
@@ -81,4 +57,54 @@ stages:
                   Start-Process -FilePath "$toolPath" -ArgumentList """$itemPath"" -A ""$rulesPath"" -V" -NoNewWindow -Wait
               }
 
-    
+    - job: Build_Reports
+      steps:
+        - checkout: self
+          path: 'self'
+        - task: PowerShell@2
+          displayName: 'Download PBIXInspector'
+          inputs:
+            targetType: inline
+            script: |
+              $path = "$(Build.SourcesDirectory)"
+              $tempPath = "$path\_temp"
+              $toolPath = "$path\_Tools\PBIInspector"
+              New-Item -ItemType Directory -Path $tempPath -ErrorAction SilentlyContinue | Out-Null
+
+              Write-Host "Downloading PBI Inspector"
+              $downloadUrl = "https://github.com/NatVanG/PBI-Inspector/releases/download/v1.8.1-CLI/win-x64-v1.8.1-CLI.zip" 
+              $zipFile = "$tempPath\PBIXInspector.zip"
+              Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
+              Expand-Archive -Path $zipFile -DestinationPath $toolPath -Force              
+              Remove-Item "$toolPath\win-x64\CLI\Files" -Force -Recurse
+
+              Write-Host "Downloading Report default rules"
+              $downloadUrl = "https://raw.githubusercontent.com/NatVanG/PBI-Inspector/main/PBIXInspectorWinLibrary/Files/Base%20rules.json"
+              Invoke-WebRequest -Uri $downloadUrl -OutFile "$tempPath\Rules-Report.json"     
+
+        - task: PowerShell@2
+          displayName: 'Run Report Rules'
+          inputs:
+            targetType: inline
+            script: |
+                  $path = "$(Build.SourcesDirectory)"
+                  $tempPath = "$path\_temp"
+                  $toolPath =  "$path\_Tools\PBIInspector\win-x64\CLI\PBIXInspectorCLI.exe"
+                  $rulesPath = "$path\Rules-Report.json"
+
+                  if (!(Test-Path $rulesPath))
+                  {
+                      Write-Host "Running default downloaded rules"
+                      $rulesPath = "$tempPath\Rules-Report.json"
+                  }
+
+                  $itemsFolders = Get-ChildItem  -Path $path -recurse -include *.pbir
+
+                  foreach($itemFolder in $itemsFolders)
+                  {	
+                      $itemPath = $itemFolder.Directory.FullName
+                      
+                      Write-Host "Processing '$itemPath'"
+
+                      Start-Process -FilePath "$toolPath" -ArgumentList "-pbipreport ""$itemPath"" -rules ""$rulesPath"" -formats ""ADO""" -NoNewWindow -Wait
+                  }
