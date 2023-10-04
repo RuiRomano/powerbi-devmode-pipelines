@@ -74,14 +74,13 @@ stages:
               New-Item -ItemType Directory -Path $tempPath -ErrorAction SilentlyContinue | Out-Null
 
               Write-Host "##[debug]Downloading PBI Inspector"
-              $downloadUrl = "https://github.com/NatVanG/PBI-Inspector/releases/download/v1.9.0-CLI/win-x64-v1.9.0-CLI.zip" 
+              $downloadUrl = "https://github.com/NatVanG/PBI-Inspector/releases/latest/download/win-x64-CLI.zip" 
               $zipFile = "$tempPath\PBIXInspector.zip"
               Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
-              Expand-Archive -Path $zipFile -DestinationPath $toolPath -Force              
-              Remove-Item "$toolPath\win-x64\CLI\Files" -Force -Recurse
+              Expand-Archive -Path $zipFile -DestinationPath $toolPath -Force                            
 
               Write-Host "##[debug]Downloading Report default rules"
-              $downloadUrl = "https://raw.githubusercontent.com/NatVanG/PBI-Inspector/main/Rules/Base%20rules.json"
+              $downloadUrl = "https://raw.githubusercontent.com/NatVanG/PBI-Inspector/main/Rules/Base-rules.json"
               Invoke-WebRequest -Uri $downloadUrl -OutFile "$tempPath\Rules-Report.json"     
 
         - task: PowerShell@2
